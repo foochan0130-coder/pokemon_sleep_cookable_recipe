@@ -1,8 +1,19 @@
 import csv
 import sys
 from pathlib import Path
+from datetime import datetime
 
 import image_to_foods
+
+# =========================================
+# 現在の鍋容量
+# =========================================
+
+POT_SIZE = 45
+
+# 日曜日の場合は2倍
+if datetime.now().weekday() == 6:
+    POT_SIZE *= 2
 
 # =========================================
 # カテゴリフィルタ
@@ -217,12 +228,6 @@ with open("recipes.csv", encoding="utf-8") as f:
             "total": int(row["total"]),
             "energy": int(row["energy"])
 })
-
-# =========================================
-# 現在の鍋容量
-# =========================================
-
-POT_SIZE = 45
 
 # =========================================
 # 作成可能レシピを判定
