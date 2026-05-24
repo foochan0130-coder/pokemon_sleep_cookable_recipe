@@ -1,6 +1,9 @@
 import csv
 import sys
+from pathlib import Path
 from datetime import datetime
+
+import image_to_foods
 
 # =========================================
 # 現在の鍋容量
@@ -158,6 +161,21 @@ FOOD_INFO = {
         "energy": 162
     }
 }
+
+# =========================================
+# owned_foods.csv を生成（screenshots があれば）
+# =========================================
+
+screenshots_dir = Path("./screenshots")
+if screenshots_dir.exists():
+    image_files = sorted(screenshots_dir.glob('*.jpg')) + sorted(screenshots_dir.glob('*.png'))
+    if image_files:
+        try:
+            image_to_foods.generate_owned_foods_csv_from_screenshots(screenshots_dir)
+        except Exception as e:
+            print(f"スクリーンショットから owned_foods.csv を生成中にエラーが発生しました: {e}")
+            sys.exit(1)
+
 
 # =========================================
 # 所持食材を読み込む
