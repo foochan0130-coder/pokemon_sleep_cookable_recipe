@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>ポケモンスリープ 調理可能レシピ判定</title>
+<link rel="manifest" href="./manifest.json" />
+<link rel="apple-touch-icon" href="./icons/icon-192.png" />
+<meta name="theme-color" content="#2f8f7a" />
+<link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+<header>
+  <h1>調理可能レシピ判定</h1>
+  <p id="pot-size-display" class="pot-size"></p>
+</header>
+
+<main>
+  <section class="card">
+    <h2>1. スクリーンショットを読み込む</h2>
+    <input type="file" id="screenshot-input" accept="image/*" capture="environment" multiple />
+    <button type="button" id="ocr-button">OCR解析</button>
+    <p id="ocr-status" class="status"></p>
+  </section>
+
+  <section class="card">
+    <h2>2. 所持食材（確認・修正）</h2>
+    <div id="foods-grid" class="foods-grid"></div>
+  </section>
+
+  <section class="card">
+    <h2>3. カテゴリ</h2>
+    <div id="category-tabs" class="category-tabs"></div>
+    <button type="button" id="judge-button" class="judge-button">判定する</button>
+  </section>
+
+  <section class="card">
+    <h2>作成可能レシピ</h2>
+    <div id="cookable-results"></div>
+  </section>
+
+  <section class="card">
+    <h2>あと少しで作れるレシピ</h2>
+    <div id="almost-results"></div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="./data.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>
