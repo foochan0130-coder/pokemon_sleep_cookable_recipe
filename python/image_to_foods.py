@@ -4,6 +4,8 @@ import csv
 import re
 from pathlib import Path
 
+BASE_DIR = Path(__file__).resolve().parent
+
 # =========================================
 # 食材の日本語名→フィールド名マッピング
 # =========================================
@@ -213,7 +215,7 @@ def extract_foods_from_image(image_path):
 # owned_foods.csvを生成
 # =========================================
 
-def generate_csv(foods, output_path="owned_foods.csv"):
+def generate_csv(foods, output_path=BASE_DIR / "owned_foods.csv"):
     """
     抽出した食材情報をCSVに書き込む
     """
@@ -238,7 +240,7 @@ def generate_csv(foods, output_path="owned_foods.csv"):
     with open(output_path, 'r', encoding='utf-8') as f:
         print(f.read())
 
-def generate_owned_foods_csv_from_screenshots(screenshots_dir=Path('./screenshots'), output_path='owned_foods.csv'):
+def generate_owned_foods_csv_from_screenshots(screenshots_dir=BASE_DIR / 'screenshots', output_path=BASE_DIR / 'owned_foods.csv'):
     """
     screenshots ディレクトリの画像から owned_foods.csv を生成する
     """

@@ -6,6 +6,9 @@ import argparse
 
 import image_to_foods
 
+BASE_DIR = Path(__file__).resolve().parent
+REPO_ROOT = BASE_DIR.parent
+
 # =========================================
 # 使い方例
 # =========================================
@@ -187,13 +190,15 @@ FOOD_INFO = {
 # `--use-owned` フラグがある場合は生成をスキップする。
 # =========================================
 
+owned_foods_path = BASE_DIR / "owned_foods.csv"
+
 if not use_owned_flag:
-    screenshots_dir = Path("./screenshots")
+    screenshots_dir = BASE_DIR / "screenshots"
     if screenshots_dir.exists():
         image_files = sorted(screenshots_dir.glob('*.jpg')) + sorted(screenshots_dir.glob('*.png'))
         if image_files:
             try:
-                image_to_foods.generate_owned_foods_csv_from_screenshots(screenshots_dir)
+                image_to_foods.generate_owned_foods_csv_from_screenshots(screenshots_dir, output_path=owned_foods_path)
             except Exception as e:
                 print(f"スクリーンショットから owned_foods.csv を生成中にエラーが発生しました: {e}")
                 sys.exit(1)
@@ -205,7 +210,7 @@ else:
 # 所持食材を読み込む
 # =========================================
 
-with open("owned_foods.csv", encoding="utf-8") as f:
+with open(owned_foods_path, encoding="utf-8") as f:
 
     reader = csv.DictReader(f)
 
@@ -222,7 +227,7 @@ with open("owned_foods.csv", encoding="utf-8") as f:
 
 recipes = []
 
-with open("recipes.csv", encoding="utf-8") as f:
+with open(REPO_ROOT / "recipes.csv", encoding="utf-8") as f:
 
     reader = csv.DictReader(f)
 

@@ -12,14 +12,25 @@
 
 「ホーム画面に追加」でアプリのように使えます（PWA対応）。
 
-GitHub Pagesを有効化すれば `https://<username>.github.io/<repo>/` で公開できます。
+公開URL: https://foochan0130-coder.github.io/pokemon_sleep_cookable_recipe/
 
 ## PC版（Python, 従来どおり）
 
 ```
-python cookable_recipe.py
-python cookable_recipe.py s
-python cookable_recipe.py --use-owned
+python python/cookable_recipe.py
+python python/cookable_recipe.py s
+python python/cookable_recipe.py --use-owned
 ```
 
-`screenshots/` にスクショを置いて実行すると、EasyOCRで `owned_foods.csv` を生成します。
+`python/screenshots/` にスクショを置いて実行すると、EasyOCRで `python/owned_foods.csv` を生成します。
+レシピデータ（`recipes.csv`）はリポジトリ直下のものをWeb版と共有しています。
+
+## ディレクトリ構成
+
+```
+index.html, app.js, data.js, style.css, sw.js, manifest.json, icons/
+                                  Web版（GitHub Pagesで公開するファイル一式）
+recipes.csv                      レシピデータ（Web版・PC版で共通）
+dev_server.py                    Web版をローカルで動作確認する時に使う簡易サーバー
+python/                          PC版（Python + EasyOCR）
+```
