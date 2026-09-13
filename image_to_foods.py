@@ -38,13 +38,30 @@ def normalize_line(line):
     return line.replace('×', 'x').replace('X', 'x').replace('*', 'x').strip()
 
 
+def normalize_count_text(text):
+    text = text.strip()
+    text = text.replace('０', '0').replace('１', '1').replace('２', '2')
+    text = text.replace('３', '3').replace('４', '4').replace('５', '5')
+    text = text.replace('６', '6').replace('７', '7').replace('８', '8').replace('９', '9')
+    text = text.replace('〇', '0').replace('Ｏ', '0').replace('o', '0').replace('O', '0')
+    text = text.replace('ロ', '0').replace('ろ', '3')
+    text = text.replace('l', '1').replace('I', '1').replace('|', '1').replace('i', '1')
+    text = text.replace('S', '5').replace('s', '5').replace('Z', '2').replace('z', '2')
+    text = text.replace('B', '8')
+    return text
+
+
 def is_count_line(line):
-    return bool(re.fullmatch(r'[xX×*]?\s*\d+', line.strip()))
+    stripped = line.strip()
+    return bool(re.match(r'^[xX×*]', stripped))
 
 
 def extract_count(line):
-    match = re.search(r'[xX×*]?\s*(\d+)', line)
-    return int(match.group(1)) if match else None
+    stripped = line.strip()
+    stripped = re.sub(r'^[xX×*]\s*', '', stripped)
+    normalized = normalize_count_text(stripped)
+    digits = re.findall(r'\d+', normalized)
+    return int(''.join(digits)) if digits else None
 
 
 def collapse_ahattaka_ginger(lines):

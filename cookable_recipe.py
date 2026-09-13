@@ -2,14 +2,27 @@ import csv
 import sys
 from pathlib import Path
 from datetime import datetime
+import argparse
 
 import image_to_foods
+
+# =========================================
+# 使い方例
+# =========================================
+# python cookable_recipe.py
+# python cookable_recipe.py s
+# python cookable_recipe.py --use-owned
+# python cookable_recipe.py d --use-owned
+#
+# 引数:
+#   category: s=サラダ, d=デザート・ドリンク, c=カレー・シチュー
+#   --use-owned: screenshots から owned_foods.csv を生成せず、既存の CSV を使用します
 
 # =========================================
 # 現在の鍋容量
 # =========================================
 
-POT_SIZE = 45
+POT_SIZE = 63
 
 # 日曜日の場合は2倍
 if datetime.now().weekday() == 6:
@@ -25,14 +38,21 @@ CATEGORY_MAP = {
     "c": "カレー・シチュー"
 }
 
+# =========================================
+# コマンドライン引数処理
+# =========================================
+
+parser = argparse.ArgumentParser(description="作成可能レシピ判定ツール")
+parser.add_argument("category", nargs="?", choices=["s", "d", "c"],
+                    help="カテゴリフィルタ: s=サラダ, d=デザート・ドリンク, c=カレー・シチュー")
+parser.add_argument("--use-owned", action="store_true",
+                    help="既存の owned_foods.csv をそのまま使う（screenshots から生成しない）")
+args = parser.parse_args()
+
 selected_category = None
-
-# 第1引数を取得
-if len(sys.argv) >= 2:
-
-    arg = sys.argv[1].lower()
-
-    selected_category = CATEGORY_MAP.get(arg)
+if args.category:
+    selected_category = CATEGORY_MAP.get(args.category.lower())
+use_owned_flag = args.use_owned
 
 # =========================================
 # ポケモンスリープ 食材定義
@@ -163,18 +183,22 @@ FOOD_INFO = {
 }
 
 # =========================================
-# owned_foods.csv を生成（screenshots があれば）
+# owned_foods.csv を生成（screenshots があれば）。
+# `--use-owned` フラグがある場合は生成をスキップする。
 # =========================================
 
-screenshots_dir = Path("./screenshots")
-if screenshots_dir.exists():
-    image_files = sorted(screenshots_dir.glob('*.jpg')) + sorted(screenshots_dir.glob('*.png'))
-    if image_files:
-        try:
-            image_to_foods.generate_owned_foods_csv_from_screenshots(screenshots_dir)
-        except Exception as e:
-            print(f"スクリーンショットから owned_foods.csv を生成中にエラーが発生しました: {e}")
-            sys.exit(1)
+if not use_owned_flag:
+    screenshots_dir = Path("./screenshots")
+    if screenshots_dir.exists():
+        image_files = sorted(screenshots_dir.glob('*.jpg')) + sorted(screenshots_dir.glob('*.png'))
+        if image_files:
+            try:
+                image_to_foods.generate_owned_foods_csv_from_screenshots(screenshots_dir)
+            except Exception as e:
+                print(f"スクリーンショットから owned_foods.csv を生成中にエラーが発生しました: {e}")
+                sys.exit(1)
+else:
+    print("既存の owned_foods.csv を使用します（screenshots から生成しません）")
 
 
 # =========================================
@@ -270,7 +294,7 @@ for recipe in recipes:
 
             total_missing = sum(missing_items.values())
 
-            if total_missing <= 10:
+            if total_missing <= 20:
 
                 recipe["missing_items"] = missing_items
                 recipe["total_missing"] = total_missing
