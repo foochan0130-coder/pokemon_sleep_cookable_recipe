@@ -1,6 +1,7 @@
 // cookable_recipe.py / image_to_foods.py を移植したブラウザ完結版ロジック
 
 const STORAGE_KEY = "ownedFoods";
+const CATEGORY_STORAGE_KEY = "selectedCategory";
 
 // =========================================
 // 所持食材の永続化
@@ -16,6 +17,28 @@ function loadOwnedFoods() {
   const zeros = {};
   for (const food of FOOD_TYPES) zeros[food] = 0;
   return zeros;
+}
+
+function loadSelectedCategory() {
+  try {
+    const raw = localStorage.getItem(CATEGORY_STORAGE_KEY);
+    if (raw && CATEGORIES.includes(raw)) return raw;
+  } catch (e) {
+    // ignore
+  }
+  return null;
+}
+
+function saveSelectedCategory(category) {
+  try {
+    if (category) {
+      localStorage.setItem(CATEGORY_STORAGE_KEY, category);
+    } else {
+      localStorage.removeItem(CATEGORY_STORAGE_KEY);
+    }
+  } catch (e) {
+    // ignore
+  }
 }
 
 function saveOwnedFoods(ownedFoods) {
@@ -111,10 +134,6 @@ function judgeRecipes(recipes, ownedFoods, categoryFilter, potSize) {
 // OCRテキスト正規化（image_to_foods.py 移植）
 // =========================================
 
-function normalizeLine(line) {
-  return line.replace(/[×X*]/g, "x").trim();
-}
-
 const COUNT_CHAR_MAP = {
   "０": "0", "１": "1", "２": "2", "３": "3", "４": "4",
   "５": "5", "６": "6", "７": "7", "８": "8", "９": "9",
@@ -126,67 +145,53 @@ const COUNT_CHAR_MAP = {
 };
 
 function normalizeCountText(text) {
-  return Array.from(text.trim())
+  return Array.from(text)
     .map((ch) => COUNT_CHAR_MAP[ch] ?? ch)
     .join("");
 }
 
-function isCountLine(line) {
-  return /^[xX×*]/.test(line.trim());
+// スマホの画面をOCRすると食材名が「ふと いな が ね ぎ」のように
+// 1文字ずつ空白区切りで認識されることがあるため、空白を除去してから照合する
+function stripSpaces(text) {
+  return text.replace(/\s+/g, "");
 }
 
-function extractCount(line) {
-  const stripped = line.trim().replace(/^[xX×*]\s*/, "");
-  const normalized = normalizeCountText(stripped);
-  const digits = normalized.match(/\d+/g);
-  return digits ? parseInt(digits.join(""), 10) : null;
+// 正式名称またはエイリアス(よくある誤読パターン)を含む食材IDをFOOD_TYPESの順序で返す
+function findFoodIds(line) {
+  const despaced = stripSpaces(line);
+  return FOOD_TYPES.filter((id) => {
+    const patterns = [FOOD_INFO[id].name, ...(FOOD_NAME_ALIASES[id] || [])];
+    return patterns.some((p) => despaced.includes(p));
+  });
 }
 
-function mergeSplitFoodNameLines(lines) {
-  const merged = [];
-  let skipNext = false;
-
-  for (let i = 0; i < lines.length; i++) {
-    if (skipNext) {
-      skipNext = false;
-      continue;
-    }
-    const line = lines[i];
-    const next = lines[i + 1];
-    if (line === "あったかジン" && next === "ジャー") {
-      merged.push("あったかジンジャー");
-      skipNext = true;
-      continue;
-    }
-    merged.push(line);
+// 1行に「x21 x10 x14 x4」のように複数の個数が並ぶ場合があるため、
+// 行全体からx/X/×/*に続く数字をすべて抽出する
+function extractCountsFromLine(line) {
+  const normalized = normalizeCountText(stripSpaces(line));
+  const counts = [];
+  for (const m of normalized.matchAll(/[xX×*]+(\d+)/g)) {
+    counts.push(parseInt(m[1], 10));
   }
-
-  return merged;
-}
-
-function findFoodNames(line) {
-  return Object.keys(FOOD_NAME_MAP).filter((jp) => line.includes(jp));
+  return counts;
 }
 
 function extractFoodsFromText(text) {
-  let rawLines = text
+  const lines = text
     .split("\n")
     .map((l) => l.trim())
-    .filter(Boolean)
-    .map(normalizeLine);
-
-  const lines = mergeSplitFoodNameLines(rawLines);
+    .filter(Boolean);
 
   // 食材名または個数を含む行のブロックを抽出
   const segments = [];
   let currentSegment = [];
 
   for (const line of lines) {
-    const hasName = findFoodNames(line).length > 0;
-    const hasCount = isCountLine(line);
+    const ids = findFoodIds(line);
+    const counts = extractCountsFromLine(line);
 
-    if (hasName || hasCount) {
-      currentSegment.push(line);
+    if (ids.length || counts.length) {
+      currentSegment.push({ ids, counts });
     } else if (currentSegment.length) {
       segments.push(currentSegment);
       currentSegment = [];
@@ -201,43 +206,38 @@ function extractFoodsFromText(text) {
     let currentType = null;
     let currentValues = [];
 
-    for (const line of segment) {
-      if (isCountLine(line)) {
-        const count = extractCount(line);
-        if (currentType !== "count") {
-          if (currentValues.length) runs.push([currentType, currentValues]);
-          currentType = "count";
-          currentValues = [count];
-        } else {
-          currentValues.push(count);
-        }
-        continue;
-      }
+    const flushRun = () => {
+      if (currentValues.length) runs.push([currentType, currentValues]);
+    };
 
-      const names = findFoodNames(line);
-      if (names.length) {
-        if (currentType !== "name") {
-          if (currentValues.length) runs.push([currentType, currentValues]);
-          currentType = "name";
-          currentValues = [...names];
+    for (const { ids, counts } of segment) {
+      if (counts.length) {
+        if (currentType !== "count") {
+          flushRun();
+          currentType = "count";
+          currentValues = [...counts];
         } else {
-          currentValues.push(...names);
+          currentValues.push(...counts);
+        }
+      } else if (ids.length) {
+        if (currentType !== "name") {
+          flushRun();
+          currentType = "name";
+          currentValues = [...ids];
+        } else {
+          currentValues.push(...ids);
         }
       }
     }
-    if (currentValues.length) runs.push([currentType, currentValues]);
+    flushRun();
 
     for (let i = 0; i < runs.length - 1; i++) {
       if (runs[i][0] === "count" && runs[i + 1][0] === "name") {
         const counts = runs[i][1];
-        const names = runs[i + 1][1];
+        const ids = runs[i + 1][1];
 
-        // FOOD_NAME_MAP の順序でソート
-        const sortedNames = Object.keys(FOOD_NAME_MAP).filter((jp) => names.includes(jp));
-
-        for (let j = 0; j < Math.min(sortedNames.length, counts.length); j++) {
-          const jp = sortedNames[j];
-          foods[FOOD_NAME_MAP[jp]] = counts[j];
+        for (let j = 0; j < Math.min(ids.length, counts.length); j++) {
+          foods[ids[j]] = counts[j];
         }
       }
     }
@@ -252,15 +252,17 @@ function extractFoodsFromText(text) {
 
 async function runOcrOnFiles(files, onProgress) {
   const allFoods = {};
+  const rawTexts = [];
 
   for (let i = 0; i < files.length; i++) {
     const { data } = await Tesseract.recognize(files[i], "jpn", {
       logger: (m) => onProgress && onProgress(i, files.length, m),
     });
+    rawTexts.push(data.text);
     Object.assign(allFoods, extractFoodsFromText(data.text));
   }
 
-  return allFoods;
+  return { foods: allFoods, rawTexts };
 }
 
 // =========================================
@@ -269,7 +271,7 @@ async function runOcrOnFiles(files, onProgress) {
 
 let allRecipes = [];
 let ownedFoods = loadOwnedFoods();
-let selectedCategory = null;
+let selectedCategory = loadSelectedCategory();
 
 function renderFoodsGrid() {
   const grid = document.getElementById("foods-grid");
@@ -312,6 +314,7 @@ function renderCategoryTabs() {
     button.className = "tab" + (selectedCategory === opt.value ? " active" : "");
     button.addEventListener("click", () => {
       selectedCategory = opt.value;
+      saveSelectedCategory(selectedCategory);
       renderCategoryTabs();
       runJudge();
     });
@@ -423,11 +426,20 @@ async function runOcr() {
   status.textContent = "解析中...";
 
   try {
-    const foods = await runOcrOnFiles(files, (i, total, m) => {
+    const { foods, rawTexts } = await runOcrOnFiles(files, (i, total, m) => {
       if (m.status === "recognizing text") {
         status.textContent = `解析中 (${i + 1}/${total}): ${Math.round(m.progress * 100)}%`;
       }
     });
+
+    try {
+      await fetch("./log", {
+        method: "POST",
+        body: JSON.stringify({ rawTexts, foods }, null, 2),
+      });
+    } catch (e) {
+      // ローカル開発サーバー以外では失敗して当然なので無視
+    }
 
     Object.assign(ownedFoods, foods);
     saveOwnedFoods(ownedFoods);
@@ -437,7 +449,7 @@ async function runOcr() {
     status.textContent =
       count > 0
         ? `✅ ${count}種類の食材を読み取りました。内容を確認・修正してください`
-        : "⚠ 食材を読み取れませんでした。手動で入力してください";
+        : "⚠ 食材を読み取れませんでした。手動で入力してください（下の「OCRの生テキスト」を確認してください）";
 
     runJudge();
   } catch (e) {

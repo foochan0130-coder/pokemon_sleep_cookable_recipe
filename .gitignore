@@ -1,3 +1,5 @@
 __pycache__/
 *.pyc
 .venv/
+ocr_debug.log
+lt.log

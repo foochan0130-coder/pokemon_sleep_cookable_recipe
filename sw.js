@@ -1,5 +1,5 @@
-const SHELL_CACHE = "shell-v1";
-const RUNTIME_CACHE = "runtime-v1";
+const SHELL_CACHE = "shell-v2";
+const RUNTIME_CACHE = "runtime-v2";
 
 const SHELL_ASSETS = [
   "./index.html",
@@ -27,23 +27,21 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+// ネットワークを優先し、失敗した時だけキャッシュにフォールバックする
+// (オフライン対応は保ちつつ、更新したファイルがすぐ反映されるようにするため)
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
 
   event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached;
-
-      return fetch(request)
-        .then((response) => {
-          if (response && response.status === 200) {
-            const clone = response.clone();
-            caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, clone));
-          }
-          return response;
-        })
-        .catch(() => cached);
-    })
+    fetch(request)
+      .then((response) => {
+        if (response && response.status === 200) {
+          const clone = response.clone();
+          caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, clone));
+        }
+        return response;
+      })
+      .catch(() => caches.match(request))
   );
 });

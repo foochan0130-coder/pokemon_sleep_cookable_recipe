@@ -50,4 +50,10 @@ for (const id of FOOD_TYPES) {
   FOOD_NAME_MAP[FOOD_INFO[id].name] = id;
 }
 
+// OCRでよく誤読される食材名のパターン(正式名称と合わせて照合に使う)
+const FOOD_NAME_ALIASES = {
+  warmingginger: ["ったがジン", "ったかジン"], // 「あったかジンジャー」の先頭が欠けたり「か」が「が」に化けやすい
+  shinyavocado: ["つやつやアポカド"], // 「ボ」が「ポ」に化けやすい
+};
+
 const CATEGORIES = ["サラダ", "デザート・ドリンク", "カレー・シチュー"];
