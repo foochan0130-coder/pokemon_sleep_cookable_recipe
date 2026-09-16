@@ -133,6 +133,24 @@ button.tab.active {
   font-size: 0.9rem;
 }
 
+.pot-size-input {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.9rem;
+}
+
+.pot-size-input input {
+  width: 80px;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
 .category-tabs {
   display: flex;
   flex-wrap: wrap;

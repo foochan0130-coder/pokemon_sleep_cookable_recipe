@@ -2,6 +2,8 @@
 
 const STORAGE_KEY = "ownedFoods";
 const CATEGORY_STORAGE_KEY = "selectedCategory";
+const POT_SIZE_STORAGE_KEY = "potSizeBase";
+const DEFAULT_POT_SIZE_BASE = 63;
 
 // =========================================
 // 所持食材の永続化
@@ -49,6 +51,25 @@ function saveOwnedFoods(ownedFoods) {
   }
 }
 
+function loadPotSizeBase() {
+  try {
+    const raw = localStorage.getItem(POT_SIZE_STORAGE_KEY);
+    const value = parseInt(raw, 10);
+    if (raw && Number.isFinite(value) && value > 0) return value;
+  } catch (e) {
+    // ignore
+  }
+  return DEFAULT_POT_SIZE_BASE;
+}
+
+function savePotSizeBase(base) {
+  try {
+    localStorage.setItem(POT_SIZE_STORAGE_KEY, String(base));
+  } catch (e) {
+    // ignore
+  }
+}
+
 // =========================================
 // recipes.csv パース
 // =========================================
@@ -90,7 +111,7 @@ function parseRecipesCSV(text) {
 // =========================================
 
 function computePotSize() {
-  const base = 63;
+  const base = potSizeBase;
   const isSunday = new Date().getDay() === 0;
   return isSunday ? base * 2 : base;
 }
@@ -272,6 +293,7 @@ async function runOcrOnFiles(files, onProgress) {
 let allRecipes = [];
 let ownedFoods = loadOwnedFoods();
 let selectedCategory = loadSelectedCategory();
+let potSizeBase = loadPotSizeBase();
 
 function renderFoodsGrid() {
   const grid = document.getElementById("foods-grid");
@@ -461,6 +483,16 @@ async function runOcr() {
 async function init() {
   renderFoodsGrid();
   renderCategoryTabs();
+
+  const potSizeInput = document.getElementById("pot-size-input");
+  potSizeInput.value = potSizeBase;
+  potSizeInput.addEventListener("change", () => {
+    const value = parseInt(potSizeInput.value, 10);
+    potSizeBase = Number.isFinite(value) && value > 0 ? value : DEFAULT_POT_SIZE_BASE;
+    potSizeInput.value = potSizeBase;
+    savePotSizeBase(potSizeBase);
+    runJudge();
+  });
 
   document.getElementById("judge-button").addEventListener("click", runJudge);
   document.getElementById("ocr-button").addEventListener("click", runOcr);
