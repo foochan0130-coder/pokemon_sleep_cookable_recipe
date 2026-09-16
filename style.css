@@ -206,6 +206,15 @@ button.tab.active {
   font-weight: 600;
 }
 
+.made-button {
+  margin-top: 8px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
 .empty {
   color: var(--muted);
   font-size: 0.9rem;

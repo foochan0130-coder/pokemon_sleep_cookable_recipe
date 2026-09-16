@@ -4,6 +4,7 @@ const STORAGE_KEY = "ownedFoods";
 const CATEGORY_STORAGE_KEY = "selectedCategory";
 const POT_SIZE_STORAGE_KEY = "potSizeBase";
 const DEFAULT_POT_SIZE_BASE = 63;
+const MADE_RECIPES_STORAGE_KEY = "madeRecipes";
 
 // =========================================
 // 所持食材の永続化
@@ -70,6 +71,24 @@ function savePotSizeBase(base) {
   }
 }
 
+function loadMadeRecipes() {
+  try {
+    const raw = localStorage.getItem(MADE_RECIPES_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    // ignore
+  }
+  return {};
+}
+
+function saveMadeRecipes(madeRecipes) {
+  try {
+    localStorage.setItem(MADE_RECIPES_STORAGE_KEY, JSON.stringify(madeRecipes));
+  } catch (e) {
+    // ignore
+  }
+}
+
 // =========================================
 // recipes.csv パース
 // =========================================
@@ -120,13 +139,14 @@ function computePotSize() {
 // 作成可能レシピ判定
 // =========================================
 
-function judgeRecipes(recipes, ownedFoods, categoryFilter, potSize) {
+function judgeRecipes(recipes, ownedFoods, categoryFilter, potSize, madeRecipes) {
   const grouped = {};
   const almost = [];
 
   for (const recipe of recipes) {
     if (categoryFilter && recipe.category !== categoryFilter) continue;
     if (recipe.unlocked !== 0) continue;
+    if (madeRecipes[recipe.recipe]) continue;
 
     const missing = {};
     for (const food of FOOD_TYPES) {
@@ -294,6 +314,7 @@ let allRecipes = [];
 let ownedFoods = loadOwnedFoods();
 let selectedCategory = loadSelectedCategory();
 let potSizeBase = loadPotSizeBase();
+let madeRecipes = loadMadeRecipes();
 
 function renderFoodsGrid() {
   const grid = document.getElementById("foods-grid");
@@ -351,11 +372,23 @@ function ingredientsListHtml(recipe) {
     .join("");
 }
 
+function markRecipeAsMade(recipeName) {
+  madeRecipes[recipeName] = true;
+  saveMadeRecipes(madeRecipes);
+  runJudge();
+}
+
+function unmarkRecipeAsMade(recipeName) {
+  delete madeRecipes[recipeName];
+  saveMadeRecipes(madeRecipes);
+  runJudge();
+}
+
 function renderResults() {
   const potSize = computePotSize();
   document.getElementById("pot-size-display").textContent = `鍋容量: ${potSize}`;
 
-  const { grouped, almost } = judgeRecipes(allRecipes, ownedFoods, selectedCategory, potSize);
+  const { grouped, almost } = judgeRecipes(allRecipes, ownedFoods, selectedCategory, potSize, madeRecipes);
 
   const cookableEl = document.getElementById("cookable-results");
   cookableEl.innerHTML = "";
@@ -390,6 +423,14 @@ function renderResults() {
         <p>レシピエナジー: ${recipe.energy}</p>
         ${overHtml}
       `;
+
+      const madeButton = document.createElement("button");
+      madeButton.type = "button";
+      madeButton.className = "made-button";
+      madeButton.textContent = "作成済みにする";
+      madeButton.addEventListener("click", () => markRecipeAsMade(recipe.recipe));
+      card.appendChild(madeButton);
+
       section.appendChild(card);
     }
 
@@ -426,8 +467,51 @@ function renderResults() {
         <p>不足合計: ${recipe.total_missing}</p>
         <ul>${itemsHtml}</ul>
       `;
+
+      const madeButton = document.createElement("button");
+      madeButton.type = "button";
+      madeButton.className = "made-button";
+      madeButton.textContent = "作成済みにする";
+      madeButton.addEventListener("click", () => markRecipeAsMade(recipe.recipe));
+      card.appendChild(madeButton);
+
       almostEl.appendChild(card);
     }
+  }
+
+  renderMadeResults();
+}
+
+function renderMadeResults() {
+  const madeEl = document.getElementById("made-results");
+  madeEl.innerHTML = "";
+
+  const madeRecipeNames = Object.keys(madeRecipes).filter((name) => madeRecipes[name]);
+  const madeList = allRecipes.filter(
+    (recipe) =>
+      madeRecipeNames.includes(recipe.recipe) &&
+      (!selectedCategory || recipe.category === selectedCategory)
+  );
+
+  if (!madeList.length) {
+    madeEl.innerHTML = '<p class="empty">作成済みにしたレシピはありません</p>';
+    return;
+  }
+
+  for (const recipe of madeList) {
+    const card = document.createElement("div");
+    card.className = "recipe-card";
+
+    card.innerHTML = `<h4>${recipe.recipe}</h4>`;
+
+    const undoButton = document.createElement("button");
+    undoButton.type = "button";
+    undoButton.className = "made-button";
+    undoButton.textContent = "取り消す";
+    undoButton.addEventListener("click", () => unmarkRecipeAsMade(recipe.recipe));
+    card.appendChild(undoButton);
+
+    madeEl.appendChild(card);
   }
 }
 
